@@ -1,3 +1,4 @@
+#%%writefile appteam3.py
 import os
 import pandas as pd
 import streamlit as st
@@ -236,9 +237,9 @@ elif "Modeling" in selected_sections:
 
     # Filters the data based on the selected migration route
     filtered_data_ts = timeseriesdf[timeseriesdf['migration route'] == migration_route]
-    filtered_data = migrant_App[migrant_App['cause of death category'] == cause_of_death]
+    # filtered_data = migrant_App[migrant_App['cause of death category'] == cause_of_death]
 
-#Creates the histogram
+    # Creates the histogram
     col2.subheader(f'Causes of Death for {migration_route}')
     fig = px.histogram(filtered_data_ts, x='cause of death category')
     fig.update_layout(
@@ -256,3 +257,6 @@ else:
     
 # Footer
 st.sidebar.text("© 2023 Migrant Data Analysis App")
+
+
+
