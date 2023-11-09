@@ -75,7 +75,6 @@ if "Data Exploration (EDA)" in selected_sections:
     # Filter data based on user inputs
     filtered_data = migrant_App[(migrant_App["incident year"] == incident_year) &
                             (migrant_App["region of origin group"] == region_of_origin) &
-                            (migrant_App["cause of death category"] == cause_of_death) &   
                             (migrant_App["number of males"] == number_of_males)]
 
     if not filtered_data.empty:
