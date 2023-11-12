@@ -1,4 +1,3 @@
-#%%writefile appteam3.py
 import os
 import pandas as pd
 import streamlit as st
@@ -9,13 +8,9 @@ import statsmodels.api as sm
 from dateutil.relativedelta import relativedelta
 from datetime import datetime
 import plotly.express as px
-import plotly.graph_objects as go
-
 
 migrant_App = pd.read_csv('migrant_clean.csv', index_col=None)
 timeseriesdf = pd.read_csv('timeseriesdf.csv')
-migrant_API_RESTAURANTS =  pd.read_csv('venue_data_RESTAURANTS.csv', index_col=None)
-migrant_API_NORESTAURANTS =  pd.read_csv('venue_data_NORESTAURANTS.csv', index_col=None)
 timeseriesdf['date'] = pd.to_datetime(timeseriesdf['date'])
 timeseriesdf.set_index('date', inplace=True)
 
@@ -25,7 +20,7 @@ print(column_names)
 st.set_page_config(page_title="Migrant Web App", page_icon=":tada:", layout="wide")
 
 # Create a multiselect for navigation
-selected_sections = st.sidebar.selectbox("Select Section", ["Introduction","Data Exploration (EDA)", "Modeling"])
+selected_sections = st.sidebar.selectbox("Select Sections", ["Introduction","Data Exploration (EDA)", "Modeling"])
 
 introduction ="""
         
@@ -42,205 +37,71 @@ introduction ="""
          migration incidents based on input parameters. """
 
 if "Data Exploration (EDA)" in selected_sections:
-    # Main content
-    st.header("Migrant Data Analysis")
-    st.write("""To provide an overview of the historical data related to missing migrants, 
-    we present an initial exploration of the dataset before applying specific filters. Below, 
-    you'll find a comprehensive table, bar chart, and geographic map summarizing key statistics 
-    aggregated across all regions of incident. This preliminary analysis aims to offer a broad 
-    perspective on the dataset's characteristics.""")
-    
-    st.markdown("<h1 style='text-align: left; color: blue; font-size: 21px;'>Preliminary Analysis:</h1>", unsafe_allow_html=True)
-    
-    # Survival rate throughout the year
-    migrant_App['incident year'] = migrant_App['incident year'].astype(int)
-    overall_survival_rate_by_year = migrant_App.groupby('incident year').apply(lambda x: x['number of survivors'].sum() / (x['total number of dead and missing'].sum() + x['number of survivors'].sum())).reset_index(name='overall_survival_rate')
-    st.markdown("<p style='text-align: center; color: yellow; font-size: 18px;'>Overall Survival Rate Throughout the Years:</p>", unsafe_allow_html=True)
-    st.line_chart(overall_survival_rate_by_year.set_index('incident year')['overall_survival_rate'], use_container_width=True)
+    st.write("""To the right, you will find a menu of user inputs where you can explore and analyze the historical data related to missing migrants. 
+    You can filter the data based on different criteria such as location, category, number of people, gender, and more. This analysis will help you 
+    gain insights into the patterns and characteristics of incidents involving missing migrants. Additionally, you can visualize the main causes of 
+    incidents in various migration routes. """)
 
-    # Country with most migrants
-    st.markdown("<p style='text-align: center; color: yellow; font-size: 18px;'>Number of Migrants Per Country:</p>", unsafe_allow_html=True)
-    country_counts = migrant_App['country of origin group'].value_counts()
-    st.bar_chart(country_counts)
-
-    # Most migration route
-    st.markdown("<p style='text-align: center; color: yellow; font-size: 18px;'>Migration Route Distribution:</p>", unsafe_allow_html=True)
-    migration_route_counts = migrant_App['migration route'].value_counts()
-    st.bar_chart(migration_route_counts)
-
-    top_regions_origin = migrant_App['region of origin'].value_counts().head(15)
-    #st.write(top_regions_origin)
-    top_countries_origin = migrant_App['country of origin'].value_counts().head(15)
-    #st.write(top_countries_origin)
-    top_extracted_countries = migrant_App['extracted country'].value_counts().head(15)
-    #st.write(top_extracted_countries)
-
-     
-    # Assuming 'region of incident' contains the regions where incidents occurred
-    top_countries = migrant_App['extracted country'].value_counts().head(15)
-
-    # Plotting the distribution
-    st.markdown("<p style='text-align: center; color: yellow; font-size: 18px;'>Top 15 Countries Where Migrants Died:</p>", unsafe_allow_html=True)
-    fig_bar = px.bar(top_countries, x=top_countries.index, y=top_countries.values, labels={'y': 'Number of Incidents'})
-    fig_bar.update_xaxes(title_text='')
-    st.plotly_chart(fig_bar)
-
-       
     # Sidebar
     st.sidebar.header("User Inputs")
     incident_year = st.sidebar.slider("Select Incident Year", 2014, 2023)
-    region_of_origin = st.sidebar.selectbox("Select Region of Incident", migrant_App["region of incident"].unique())
-    #number_of_males = st.sidebar.number_input("number of males", min_value=0)
+    region_of_origin = st.sidebar.selectbox("Select Region of Origin", migrant_App["region of origin group"].unique())
+    number_of_males = st.sidebar.number_input("Number of Males", min_value=0)
 
-       
+    # Main content
+    st.header("Migrant Data Analysis")
+
     # Group data by "Region of Origin"
-    grouped_data = migrant_App.groupby("region of incident").agg({
+    grouped_data = migrant_App.groupby("region of origin group").agg({
         "number of males": "sum",
         "number of females": "sum",
-        "number of children": "sum"
+        "number of children": "sum",
+        "total number of dead and missing": "sum"
     })
 
-    st.markdown("<p style='text-align: center; color: yellow; font-size: 18px;'>Geopraphical Distribution of Incidents:</p>", unsafe_allow_html=True)
-    # Display the geo map 
-    fig = px.scatter_geo(
-        migrant_App,
-        lat='latitude',
-        lon='longitude',
-        color='total number of dead and missing', 
-        size='total number of dead and missing',
-        hover_name='region of incident',
-        hover_data=['number of dead', 'number of survivors', 'country of origin group'],  
-        projection='natural earth',
-        #title='Geographical Distribution of Incidents',
-        labels={'total number of dead and missing': 'Incident Count'},
-        height=600,  
-        width=800,   
-        size_max=15,  
-        
-    )
-    st.write("""For a spatial perspective, the interactive map below displays incident locations. Each point on the map 
-    represents a specific incident, allowing users to explore the geographical distribution of missing migrant cases.
-    This visual tool adds another layer of insight to the initial dataset exploration.""")
-    #fig.update_layout(title=dict(text='Geographical Distribution of Incidents', font=dict(size=20, color='blue')))
-    
-    st.plotly_chart(fig, use_container_width=True)
-        
     # Display the aggregated data
-    st.markdown("<p style='text-align: center; color: yellow; font-size: 18px;'>Aggregated Data by Region:</p>", unsafe_allow_html=True)
-  
-    st.write(f"The table below aggregates number of incidents, categorized by region of incidents and gender across all recorded years.")
-    grouped_data.columns = [f"{col.upper()}" for col in grouped_data.columns]
-    st.dataframe(grouped_data)
-    
-    #st.markdown("<h1 style='text-align: left; color: blue; font-size: 21px;'>Population Breakdown by Gender and Region:</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: yellow; font-size: 18px;'>Population Breakdown by Gender and Region:</p>", unsafe_allow_html=True)
-    st.write(f"""Complementing the table above, this bar chart visually represents the distribution of incidents across different regions. 
-    Each bar corresponds to a region of incident, and its height indicates the total number of incidents in that region. This visualization
-    aids in identifying regions with higher incident rates.""")
+    st.write("Aggregated Data by Region:")
+    st.write(grouped_data)
 
-    # Plot the results (we can customize other chart types)
+    # Plot the results (we can customize othr chart type)
     st.bar_chart(grouped_data)
 
-    st.markdown("<p style='font-size: 15px; font-style: italic;'>Note: The above statistics and visualizations provide a preliminary understanding of the dataset. For a more focused analysis, feel free to use the sidebar filters to explore data for a specific incident year and region of incident</p>", unsafe_allow_html=True)
-
-    st.markdown("<h1 style='text-align: left; color: blue; font-size: 21px;'>Analysis Results:</h1>", unsafe_allow_html=True)
-    st.write("""To the left, you will find a menu of user inputs where you can explore and analyze the historical data related to missing migrants. 
-    You can filter the data based on two criterias: year and region of incident. This analysis will help you gain insights into the patterns and 
-    characteristics of incidents involving missing migrants. Additionally, we present visualizations depicting the geographical distribution of incidents,
-    along with an overview of demographic data by region.  """)
-    
     # User inputs
-    st.markdown("<p style='text-align: left; color: Yellow; font-size: 18px; font_weight: bold'>User Inputs:</p>", unsafe_allow_html=True)
-    st.write(f"Incident Year Of: <span style='color:yellow;font-weight: bold'>{incident_year}</span>", unsafe_allow_html=True)
-    st.write(f"Incident Origin: <span style='color:yellow; font-weight: bold'>{region_of_origin}</span>", unsafe_allow_html=True)
-    st.write(f"The information below represents the statistics and categories of the specified seletions")
-       
+    st.write("User Inputs:")
+    st.write(f"Incident Year: {incident_year}")
+    st.write(f"Region of Origin: {region_of_origin}")
+    st.write(f"Number of Males: {number_of_males}")
+
     # Filter data based on user inputs
     filtered_data = migrant_App[(migrant_App["incident year"] == incident_year) &
-                            (migrant_App["region of incident"] == region_of_origin)]
-    
+                            (migrant_App["region of origin group"] == region_of_origin) &
+                            (migrant_App["number of males"] == number_of_males)]
+
     if not filtered_data.empty:
         # Display filted data
-        st.write("Number of dead and missing:", filtered_data["total number of dead and missing"].sum())
-        st.write("Number of survivors:", filtered_data["number of survivors"].sum())
-        
-        filtered_data_1 = migrant_App[(migrant_App['incident year'] == incident_year) & (migrant_App['region of incident'] == region_of_origin)]
-        unique_countries = filtered_data_1["country of origin group"].unique()
-        styled_regions = ", ".join([f"<span style='color:green;'>{region}</span>" for region in unique_countries])
-
-
-        # Display the styled list
-        st.write("Countries of origin include:")
-        st.write(styled_regions, unsafe_allow_html=True)
-
-        if not filtered_data_1.empty:
-            main_cause = filtered_data_1['cause of death category'].value_counts().idxmax()
-            styled_main_cause = f"<span style='color:green;'>{main_cause}</span>"
-            st.markdown(f"The main cause of death for this year is: {styled_main_cause}", unsafe_allow_html=True)
-    
-    # Survival rate for the filtered data
-    if not filtered_data.empty:
-        st.markdown("<p style='text-align: left; color: yellow; font-size: 18px;'>Survival Rate:</p>", unsafe_allow_html=True)
-        total_incidents = int(filtered_data['total number of dead and missing'].sum() + filtered_data['number of survivors'].sum())
-        total_survivors = filtered_data['number of survivors'].sum()
-        survival_rate = total_survivors / total_incidents if total_incidents != 0 else 0
-        styled_survival_rate = f"<span style='color:green;'>{survival_rate:.2%}</span>"
-        st.markdown(f"Survival Rate for this region in this year is: {styled_survival_rate}", unsafe_allow_html=True)
-
+        st.subheader("Analysis Results")
+        st.write("Number of Dead:", filtered_data["number of dead"].values[0])
+        st.write("Estimated number of Missings:", filtered_data["minimum estimated number of missing"].values[0])
+        st.write("Number of Dead and Missing:", filtered_data["total number of dead and missing"].values[0])
+        st.write("Number of Survivors:", filtered_data["number of survivors"].values[0])
+        st.write("Number of Females:", filtered_data["number of females"].values[0])
+        st.write("Number of Children:", filtered_data["number of children"].values[0])
+        st.write("Cause of Death:", filtered_data["cause of death category"].values[0])
+        st.write("Country of Death:", filtered_data["extracted country"].values[0])
     else:
         st.warning("No data available for the selected inputs.")
-
-    # Foursquare API
-    st.markdown("<h1 style='text-align: left; color: blue; font-size: 21px;'>Migrant Support Services Finder:</h1>", unsafe_allow_html=True)
-    st.write("""To determine where to focus on finding agencies, we utilize Four Square API to identify hotspots of activity in
-                this case agencies for migrant's needs. Given our scenario, where the most frequent migration route is from Mexico 
-                the United States, and the location of death often occurs in the United States, it makes sense to prioritize this 
-                variable values to specifically focus on incidents in the United States.""")
-    
-    st.write("""Essential Services Hub:
-                This category provides a unique set of hot spots that go beyond traditional services, focusing on establishments
-                crucial for daily life and well-being. These spots include supermarkets, restaurants, and retail stores like Sam's Club,
-                providing essential goods and services. Recognizing these locations is important in ensuring that migrants have 
-                access to fundamental resources, such as groceries and essential items, contributing to their overall quality of 
-                life and stability in a new community.""")
-               
-    st.write("""Comprehensive Migrant Support:
-                In addition to essential services, the broader category "Hospital, Community Center, Refugee Support, Migrant 
-                Support" captures a comprehensive range of resources catering to the diverse needs of migrants. This provides 
-                healthcare facilities, community centers, and specialized support services for refugees and migrants. Identifying
-                these hot spots is crucial for creating a network of comprehensive support, offering migrants a spectrum of 
-                assistance, from medical care to community integration. This comprehensive approach aims to enhance the overall
-                well-being of migrants by addressing both immediate necessities and long-term integration challenges.""")
-
-    # Input for the user to select the query category
-    category_options = ['Essentials', 'Hospital, Community Center, Refugee Support, Migrant Support']
-    selected_category = st.selectbox("Select category", category_options)
-    
-    if st.button("Search"):
-        if selected_category == 'Essentials':
-            result = migrant_API_RESTAURANTS
-            
-        else:
-            
-            result = migrant_API_NORESTAURANTS
-
-        st.write("Nearby Venues:")
-        st.write(result)
-        
-
 
 # Additional features..............
 # Check if "Modeling" is in the selected sections
 elif "Modeling" in selected_sections:
     # Header
-    st.subheader("Time Series Model")
-    st.write("To the left you will see a menu of user inputs where you can input the time and migration route you are planning on taking, this will then output an estimation of number of incidents based on the historicals. To the right of this timeseries you will also see the main causes of death in the migration route")
+    st.write("To the right you will see a menu of user inputs where you can input the time and migration route you are planning on taking, this will then output an estimation of number of incidents based on the historicals. To the right of this timeseries you will also see the main causes of death in the migration route")
     # Sidebar
     st.sidebar.header("User Inputs")
     planned_migration_date = st.sidebar.date_input("Input planned migration date", value="today", min_value=None, max_value=None, format="YYYY-MM-DD")
 
     migration_route = st.sidebar.selectbox("Select Migration Route", timeseriesdf["migration route"].unique())
-    
+    st.subheader("Time Series Model")
     #function that returns the level of the migration route inputted
     def getLevelOfRoute(route, timeseriesdf):
         level = timeseriesdf[timeseriesdf['migration route'] == route]['label_level'].values[0]
@@ -379,7 +240,7 @@ elif "Modeling" in selected_sections:
 
     # Creates the histogram
     col2.subheader(f'Causes of Death for {migration_route}')
-    fig = px.histogram(filtered_data_ts, x='Cause of Death Category')
+    fig = px.histogram(filtered_data_ts, x='cause of death category')
     fig.update_layout(
         width=600,  # Set the width in pixels
         height=400  # Set the height in pixels
@@ -396,5 +257,4 @@ else:
 # Footer
 st.sidebar.text("© 2023 Migrant Data Analysis App")
 
-
-
+#!streamlit run appteam3.py --server.port=8080 --browser.serverAddress='0.0.0.0'
